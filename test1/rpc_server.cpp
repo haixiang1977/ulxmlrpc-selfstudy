@@ -21,6 +21,28 @@ static bool running = true;
 // don't use log4j which will send debug message to log4j port 4448
 // just use normal std::cout to print debug message
 
+class TestClass
+{
+ public:
+    static ulxr::MethodResponse testcallOne(const ulxr::MethodCall &calldata);
+};
+
+ulxr::MethodResponse TestClass::testcallOne(const ulxr::MethodCall &calldata)
+{
+    ulxr::MethodResponse resp;
+
+    // get response from rpc
+    ulxr::RpcString rpcs = calldata.getParam(0);
+    // convert rpc string to string
+    ulxr::CppString s = rpcs.getString();
+    s = ulxr::CppString("Hello from xmlrpc server: ") + s;
+
+    // convert string to rpc string and set to response
+    resp.setResult(ulxr::RpcString(s));
+    // send response back
+    return resp;
+}
+
 int main()
 {
     bool secure = false;
@@ -62,7 +84,7 @@ int main()
     }
 
     // setup Http protocol
-    ulxr::HttpProtocol prot(conn.get())
+    ulxr::HttpProtocol prot(conn.get());
     prot.setChunkedTransfer(chunked);
     prot.setPersistent(persistent);
     prot.setAcceptCookies(false);
@@ -73,9 +95,17 @@ int main()
     // add method
     try
     {
-        server.addMethod();
-
-        server.addMethod();
+        // make static method
+        server.addMethod(ulxr::make_method(TestClass::testcallOne),
+            // signature of the return value is RpcString
+            ulxr::Signature() << ulxr::RpcString(),
+            // the name of the method
+            ULXR_PCHAR("testcallOne"),
+            // signature of the parameters
+            ulxr::Signature() << ulxr::RpcString(),
+            // short usage of description
+            ULXR_PCHAR("Testcase with a static method in a class")
+        );
 
         while (running)
         {
@@ -127,4 +157,3 @@ int main()
     std::cout << "Well done and quit" << std::endl;
     return 0;
 }
-
